@@ -13,6 +13,8 @@ cd -
 
 sed -i "s/^.*vermagic$/\techo '1' > \$(LINUX_DIR)\/.vermagic/" include/kernel-defaults.mk
 
+sed -i "/wireless.\${name}.disabled/d" package/network/config/wifi-scripts/files/lib/wifi/mac80211.sh
+
 #sed -i "s/\$(PKG_VERSION)-\$(PKG_RELEASE)/\$(PKG_VERSION)-r\$(PKG_RELEASE)/" include/package-defaults.mk
 
 cp -rf devices/common/patches/rootfstargz.patch.b devices/common/patches/rootfstargz.patch
