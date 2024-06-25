@@ -1,0 +1,1472 @@
+From d6e456c44ae71ad51b75ba366400f345bfb7270b Mon Sep 17 00:00:00 2001
+From: hzy <hzyitc@outlook.com>
+Date: Wed, 24 Apr 2024 23:37:01 +0800
+Subject: [PATCH 1/6] qca-ssdk: support ipq50xx
+
+Signed-off-by: hzy <hzyitc@outlook.com>
+---
+ package/kernel/qca-ssdk/Makefile              |  4 ++
+ ...replace-ioremap_nocache-with-ioremap.patch | 53 +++++++++++++++++++
+ 2 files changed, 57 insertions(+)
+ create mode 100644 package/kernel/qca-ssdk/patches/104-init-replace-ioremap_nocache-with-ioremap.patch
+
+diff --git a/package/kernel/qca-ssdk/Makefile b/package/kernel/qca-ssdk/Makefile
+index bbe9f12051462..2bb4e7ed0820b 100644
+--- a/package/kernel/qca-ssdk/Makefile
++++ b/package/kernel/qca-ssdk/Makefile
+@@ -58,6 +58,10 @@ ifeq ($(CONFIG_TARGET_SUBTARGET), "ipq60xx")
+     MAKE_FLAGS+= CHIP_TYPE=CPPE
+ endif
+ 
++ifeq ($(CONFIG_TARGET_SUBTARGET), "ipq50xx")
++    MAKE_FLAGS+= CHIP_TYPE=MP IN_QCA808X_PHY=TRUE IN_MISC=TRUE IN_STP=TRUE IN_VSI=TRUE IN_FDB=TRUE
++endif
++
+ 
+ define Build/Compile
+ 	+$(MAKE) $(PKG_JOBS) $(MAKE_FLAGS) -C $(PKG_BUILD_DIR) $(LNX_CONFIG_OPTS)
+diff --git a/package/kernel/qca-ssdk/patches/104-init-replace-ioremap_nocache-with-ioremap.patch b/package/kernel/qca-ssdk/patches/104-init-replace-ioremap_nocache-with-ioremap.patch
+new file mode 100644
+index 0000000000000..102f8c8da2838
+--- /dev/null
++++ b/package/kernel/qca-ssdk/patches/104-init-replace-ioremap_nocache-with-ioremap.patch
+@@ -0,0 +1,53 @@
++From 27360a6255db0b68353f6df30b6feea1db7d8539 Mon Sep 17 00:00:00 2001
++From: hzy <hzyitc@outlook.com>
++Date: Mon, 22 Apr 2024 21:41:55 +0800
++Subject: [PATCH] init: replace ioremap_nocache() with ioremap()
++
++Signed-off-by: hzy <hzyitc@outlook.com>
++---
++ src/init/ssdk_clk.c | 8 ++++----
++ 1 file changed, 4 insertions(+), 4 deletions(-)
++
++diff --git a/src/init/ssdk_clk.c b/src/init/ssdk_clk.c
++index 711423f3..8ba9b572 100755
++--- a/src/init/ssdk_clk.c
+++++ b/src/init/ssdk_clk.c
++@@ -726,7 +726,7 @@ ssdk_mp_tcsr_get(a_uint32_t tcsr_offset, a_uint32_t *tcsr_val)
++ {
++ 	void __iomem *tcsr_base = NULL;
++ 
++-	tcsr_base = ioremap_nocache(TCSR_ETH_ADDR, TCSR_ETH_SIZE);
+++	tcsr_base = ioremap(TCSR_ETH_ADDR, TCSR_ETH_SIZE);
++ 	if (!tcsr_base)
++ 	{
++ 		SSDK_ERROR("Failed to map tcsr eth address!\n");
++@@ -743,7 +743,7 @@ ssdk_mp_tcsr_set(a_uint32_t tcsr_offset, a_uint32_t tcsr_val)
++ {
++ 	void __iomem *tcsr_base = NULL;
++ 
++-	tcsr_base = ioremap_nocache(TCSR_ETH_ADDR, TCSR_ETH_SIZE);
+++	tcsr_base = ioremap(TCSR_ETH_ADDR, TCSR_ETH_SIZE);
++ 	if (!tcsr_base)
++ 	{
++ 		SSDK_ERROR("Failed to map tcsr eth address!\n");
++@@ -791,7 +791,7 @@ ssdk_mp_cmnblk_stable_check(void)
++ 	a_uint32_t reg_val;
++ 	int i, loops = 20;
++ 
++-	pll_lock = ioremap_nocache(CMN_PLL_LOCKED_ADDR, CMN_PLL_LOCKED_SIZE);
+++	pll_lock = ioremap(CMN_PLL_LOCKED_ADDR, CMN_PLL_LOCKED_SIZE);
++ 	if (!pll_lock) {
++ 		SSDK_ERROR("Failed to map CMN PLL LOCK register!\n");
++ 		return A_FALSE;
++@@ -848,7 +848,7 @@ static void ssdk_cmnblk_pll_src_set(enum cmnblk_pll_src_type pll_source)
++ 	void __iomem *cmn_pll_src_base = NULL;
++ 	a_uint32_t reg_val;
++ 
++-	cmn_pll_src_base = ioremap_nocache(CMN_BLK_PLL_SRC_ADDR, CMN_BLK_SIZE);
+++	cmn_pll_src_base = ioremap(CMN_BLK_PLL_SRC_ADDR, CMN_BLK_SIZE);
++ 	if (!cmn_pll_src_base) {
++ 		SSDK_ERROR("Failed to map cmn pll source address!\n");
++ 		return;
++-- 
++2.40.1
++
+
+From 518f4d272980336f0295b4bb39dc50e191e5a089 Mon Sep 17 00:00:00 2001
+From: hzy <hzyitc@outlook.com>
+Date: Wed, 24 Apr 2024 23:37:01 +0800
+Subject: [PATCH 2/6] qca-dp: support ipq50xx
+
+Signed-off-by: hzy <hzyitc@outlook.com>
+---
+ ...01-WiP-syn-gmac-use-standard-DMA-api.patch | 240 ++++++++++++++++++
+ ...e-corrent-scm-function-to-write-tcsr.patch |  41 +++
+ 2 files changed, 281 insertions(+)
+ create mode 100644 package/kernel/qca-nss-dp/patches/0012-01-WiP-syn-gmac-use-standard-DMA-api.patch
+ create mode 100644 package/kernel/qca-nss-dp/patches/0012-02-ipq50xx-use-corrent-scm-function-to-write-tcsr.patch
+
+diff --git a/package/kernel/qca-nss-dp/patches/0012-01-WiP-syn-gmac-use-standard-DMA-api.patch b/package/kernel/qca-nss-dp/patches/0012-01-WiP-syn-gmac-use-standard-DMA-api.patch
+new file mode 100644
+index 0000000000000..22f1479f9c840
+--- /dev/null
++++ b/package/kernel/qca-nss-dp/patches/0012-01-WiP-syn-gmac-use-standard-DMA-api.patch
+@@ -0,0 +1,240 @@
++From 5ad8cf24897ff903112967a9662cb13ed4cbbf57 Mon Sep 17 00:00:00 2001
++From: hzy <hzyitc@outlook.com>
++Date: Mon, 22 Apr 2024 21:47:58 +0800
++Subject: [PATCH 1/2] WiP: syn-gmac: use standard DMA api
++
++Signed-off-by: hzy <hzyitc@outlook.com>
++---
++ hal/dp_ops/syn_gmac_dp/syn_dp_cfg_rx.c | 14 ++++++--
++ hal/dp_ops/syn_gmac_dp/syn_dp_cfg_tx.c |  2 ++
++ hal/dp_ops/syn_gmac_dp/syn_dp_rx.c     | 47 +++++++++++++-------------
++ hal/dp_ops/syn_gmac_dp/syn_dp_tx.c     | 23 ++++---------
++ 4 files changed, 42 insertions(+), 44 deletions(-)
++
++diff --git a/hal/dp_ops/syn_gmac_dp/syn_dp_cfg_rx.c b/hal/dp_ops/syn_gmac_dp/syn_dp_cfg_rx.c
++index 8cbbcaaf..1c9006c7 100644
++--- a/hal/dp_ops/syn_gmac_dp/syn_dp_cfg_rx.c
+++++ b/hal/dp_ops/syn_gmac_dp/syn_dp_cfg_rx.c
++@@ -26,6 +26,7 @@ static int syn_dp_cfg_rx_setup_desc_queue(struct syn_dp_info *dev_info)
++ {
++ 	struct syn_dp_info_rx *rx_info = &dev_info->dp_info_rx;
++ 	struct dma_desc_rx *first_desc = NULL;
+++	dma_addr_t dma_addr;
++ 	struct net_device *netdev = rx_info->netdev;
++ 
++ 	netdev_dbg(netdev, "Total size of memory required for Rx Descriptors in Ring Mode = %u\n", (uint32_t)((sizeof(struct dma_desc_rx) * SYN_DP_RX_DESC_SIZE)));
++@@ -33,13 +34,15 @@ static int syn_dp_cfg_rx_setup_desc_queue(struct syn_dp_info *dev_info)
++ 	/*
++ 	 * Allocate cacheable descriptors for Rx
++ 	 */
++-	first_desc = kzalloc(sizeof(struct dma_desc_rx) * SYN_DP_RX_DESC_SIZE, GFP_KERNEL);
+++	first_desc = dma_alloc_coherent(rx_info->dev,
+++					sizeof(struct dma_desc_rx) * SYN_DP_RX_DESC_SIZE,
+++					&dma_addr, GFP_KERNEL);
++ 	if (!first_desc) {
++ 		netdev_dbg(netdev, "Error in Rx Descriptor Memory allocation in Ring mode\n");
++ 		return -ENOMEM;
++ 	}
++ 
++-	dev_info->rx_desc_dma_addr = (dma_addr_t)virt_to_phys(first_desc);
+++	dev_info->rx_desc_dma_addr = dma_addr;
++ 	rx_info->rx_desc = first_desc;
++ 	syn_dp_gmac_rx_desc_init_ring(rx_info->rx_desc, SYN_DP_RX_DESC_SIZE);
++ 
++@@ -98,6 +101,10 @@ void syn_dp_cfg_rx_cleanup_rings(struct syn_dp_info *dev_info)
++ 	for (i = 0; i < rx_info->busy_rx_desc_cnt; i++) {
++ 		rx_skb_index = (rx_skb_index + i) & SYN_DP_RX_DESC_MAX_INDEX;
++ 		rxdesc = rx_info->rx_desc;
+++
+++		dma_unmap_single(rx_info->dev, rxdesc->buffer1,
+++				 rxdesc->length, DMA_FROM_DEVICE);
+++
++ 		skb = rx_info->rx_buf_pool[rx_skb_index].skb;
++ 		if (unlikely(skb != NULL)) {
++ 			dev_kfree_skb_any(skb);
++@@ -105,7 +112,8 @@ void syn_dp_cfg_rx_cleanup_rings(struct syn_dp_info *dev_info)
++ 		}
++ 	}
++ 
++-	kfree(rx_info->rx_desc);
+++	dma_free_coherent(rx_info->dev, (sizeof(struct dma_desc_rx) * SYN_DP_RX_DESC_SIZE),
+++			  rx_info->rx_desc, dev_info->rx_desc_dma_addr);
++ 	rx_info->rx_desc = NULL;
++ 	dev_info->rx_desc_dma_addr = (dma_addr_t)0;
++ }
++diff --git a/hal/dp_ops/syn_gmac_dp/syn_dp_cfg_tx.c b/hal/dp_ops/syn_gmac_dp/syn_dp_cfg_tx.c
++index bf5e19a0..284e8880 100644
++--- a/hal/dp_ops/syn_gmac_dp/syn_dp_cfg_tx.c
+++++ b/hal/dp_ops/syn_gmac_dp/syn_dp_cfg_tx.c
++@@ -91,6 +91,8 @@ void syn_dp_cfg_tx_cleanup_rings(struct syn_dp_info *dev_info)
++ 		tx_skb_index = syn_dp_tx_inc_index(tx_skb_index, i);
++ 		txdesc = tx_info->tx_desc;
++ 
+++		dma_unmap_single(tx_info->dev, txdesc->buffer1, txdesc->length, DMA_TO_DEVICE);
+++
++ 		skb = tx_info->tx_buf_pool[tx_skb_index].skb;
++ 		if (unlikely(skb != NULL)) {
++ 			dev_kfree_skb_any(skb);
++diff --git a/hal/dp_ops/syn_gmac_dp/syn_dp_rx.c b/hal/dp_ops/syn_gmac_dp/syn_dp_rx.c
++index 1ddeb7d6..1798d4e7 100644
++--- a/hal/dp_ops/syn_gmac_dp/syn_dp_rx.c
+++++ b/hal/dp_ops/syn_gmac_dp/syn_dp_rx.c
++@@ -73,16 +73,6 @@ static inline void syn_dp_rx_refill_one_desc(struct dma_desc_rx *rx_desc,
++  */
++ static inline void syn_dp_rx_inval_and_flush(struct syn_dp_info_rx *rx_info, uint32_t start, uint32_t end)
++ {
++-	/*
++-	 * Batched flush and invalidation of the rx descriptors
++-	 */
++-	if (end > start) {
++-		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
++-	} else {
++-		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
++-		dmac_flush_range_no_dsb((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
++-	}
++-
++ 	dsb(st);
++ }
++ 
++@@ -124,15 +114,19 @@ int syn_dp_rx_refill_page_mode(struct syn_dp_info_rx *rx_info)
++ 			break;
++ 		}
++ 
+++		skb_fill_page_desc(skb, 0, pg, 0, PAGE_SIZE);
+++
++ 		/*
++ 		 * Get virtual address of allocated page.
++ 		 */
++ 		page_addr = page_address(pg);
++-		dma_addr = (dma_addr_t)virt_to_phys(page_addr);
++-
++-		skb_fill_page_desc(skb, 0, pg, 0, PAGE_SIZE);
+++		dma_addr  = dma_map_page(rx_info->dev, pg, 0, PAGE_SIZE, DMA_FROM_DEVICE);
+++		if (unlikely(dma_mapping_error(rx_info->dev, dma_addr))) {
+++			dev_kfree_skb(skb);
+++			netdev_dbg(netdev, "DMA mapping failed for empty buffer\n");
+++			break;
+++		}
++ 
++-		dmac_inv_range_no_dsb(page_addr, (page_addr + PAGE_SIZE));
++ 		rx_refill_idx = rx_info->rx_refill_idx;
++ 		rx_desc = rx_info->rx_desc + rx_refill_idx;
++ 
++@@ -181,8 +175,15 @@ int syn_dp_rx_refill(struct syn_dp_info_rx *rx_info)
++ 
++ 		skb_reserve(skb, SYN_DP_SKB_HEADROOM + NET_IP_ALIGN);
++ 
++-		dma_addr = (dma_addr_t)virt_to_phys(skb->data);
++-		dmac_inv_range_no_dsb((void *)skb->data, (void *)(skb->data + inval_len));
+++		dma_addr = dma_map_single(rx_info->dev, skb->data,
+++		                          inval_len,
+++		                          DMA_FROM_DEVICE);
+++		if (unlikely(dma_mapping_error(rx_info->dev, dma_addr))) {
+++			dev_kfree_skb(skb);
+++			netdev_dbg(netdev, "DMA mapping failed for empty buffer\n");
+++			break;
+++		}
+++
++ 		rx_refill_idx = rx_info->rx_refill_idx;
++ 		rx_desc = rx_info->rx_desc + rx_refill_idx;
++ 
++@@ -407,12 +408,6 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
++ 	 * this code is executing.
++ 	 */
++ 	end = syn_dp_rx_inc_index(rx_info->rx_idx, busy);
++-	if (end > start) {
++-		dmac_inv_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
++-	} else {
++-		dmac_inv_range_no_dsb((void *)&rx_info->rx_desc[start], (void *)&rx_info->rx_desc[SYN_DP_RX_DESC_MAX_INDEX] + sizeof(struct dma_desc_rx));
++-		dmac_inv_range_no_dsb((void *)&rx_info->rx_desc[0], (void *)&rx_info->rx_desc[end] + sizeof(struct dma_desc_rx));
++-	}
++ 
++ 	dsb(st);
++ 
++@@ -439,8 +434,12 @@ int syn_dp_rx(struct syn_dp_info_rx *rx_info, int budget)
++ 		 * speculative prefetch by CPU may have occurred.
++ 		 */
++ 		frame_length = syn_dp_gmac_get_rx_desc_frame_length(status);
++-		dmac_inv_range((void *)rx_buf->map_addr_virt,
++-			(void *)(((uint8_t *)rx_buf->map_addr_virt) + frame_length));
+++		if (likely(!rx_info->page_mode))
+++			dma_unmap_single(rx_info->dev, rx_desc->buffer1,
+++			                 rx_info->alloc_buf_len, DMA_FROM_DEVICE);
+++		else
+++			dma_unmap_page(rx_info->dev, rx_desc->buffer1,
+++			               PAGE_SIZE, DMA_FROM_DEVICE);
++ 		prefetch((void *)rx_buf->map_addr_virt);
++ 
++ 		rx_next_idx = syn_dp_rx_inc_index(rx_idx, 1);
++diff --git a/hal/dp_ops/syn_gmac_dp/syn_dp_tx.c b/hal/dp_ops/syn_gmac_dp/syn_dp_tx.c
++index c97e252b..6d4adb3f 100644
++--- a/hal/dp_ops/syn_gmac_dp/syn_dp_tx.c
+++++ b/hal/dp_ops/syn_gmac_dp/syn_dp_tx.c
++@@ -104,9 +104,7 @@ static inline struct dma_desc_tx *syn_dp_tx_process_nr_frags(struct syn_dp_info_
++ 		BUG_ON(!length);
++ #endif
++ 
++-		dma_addr = (dma_addr_t)virt_to_phys(frag_addr);
++-
++-		dmac_clean_range_no_dsb(frag_addr, frag_addr + length);
+++		dma_addr = dma_map_single(tx_info->dev, frag_addr, length, DMA_TO_DEVICE);
++ 
++ 		*total_length += length;
++ 		tx_desc = syn_dp_tx_set_desc_sg(tx_info, dma_addr, length, DESC_OWN_BY_DMA);
++@@ -150,8 +148,7 @@ int syn_dp_tx_nr_frags(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
++ 	/*
++ 	 * Flush the dma for non-paged skb data
++ 	 */
++-	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
++-	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + length));
+++	dma_addr = dma_map_single(tx_info->dev, skb->data, length, DMA_TO_DEVICE);
++ 
++ 	total_len = length;
++ 
++@@ -256,12 +253,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
++ 		return NETDEV_TX_BUSY;
++ 	}
++ 
++-	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
++-
++-	/*
++-	 * Flush the data area of the head skb
++-	 */
++-	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + length));
+++	dma_addr = dma_map_single(tx_info->dev, skb->data, length, DMA_TO_DEVICE);
++ 
++ 	total_len = length;
++ 
++@@ -290,9 +282,7 @@ int syn_dp_tx_frag_list(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
++ 		BUG_ON(!length);
++ #endif
++ 
++-		dma_addr = (dma_addr_t)virt_to_phys(iter_skb->data);
++-
++-		dmac_clean_range_no_dsb((void *)iter_skb->data, (void *)(iter_skb->data + length));
+++		dma_addr = dma_map_single(tx_info->dev, iter_skb->data, length, DMA_TO_DEVICE);
++ 
++ 		total_len += length;
++ 
++@@ -445,6 +435,7 @@ int syn_dp_tx_complete(struct syn_dp_info_tx *tx_info, int budget)
++ 			break;
++ 		}
++ 
+++		dma_unmap_single(tx_info->dev, desc->buffer1, desc->length, DMA_TO_DEVICE);
++ 
++ 		if (likely(status & DESC_TX_LAST)) {
++ 			tx_skb_index = syn_dp_tx_comp_index_get(tx_info);
++@@ -571,9 +562,7 @@ int syn_dp_tx(struct syn_dp_info_tx *tx_info, struct sk_buff *skb)
++ 		return NETDEV_TX_BUSY;
++ 	}
++ 
++-	dma_addr = (dma_addr_t)virt_to_phys(skb->data);
++-
++-	dmac_clean_range_no_dsb((void *)skb->data, (void *)(skb->data + skb->len));
+++	dma_addr = dma_map_single(tx_info->dev, skb->data, skb->len, DMA_TO_DEVICE);
++ 
++ 	/*
++ 	 * Queue packet to the GMAC rings
++-- 
++2.40.1
++
+diff --git a/package/kernel/qca-nss-dp/patches/0012-02-ipq50xx-use-corrent-scm-function-to-write-tcsr.patch b/package/kernel/qca-nss-dp/patches/0012-02-ipq50xx-use-corrent-scm-function-to-write-tcsr.patch
+new file mode 100644
+index 0000000000000..382b7c033490f
+--- /dev/null
++++ b/package/kernel/qca-nss-dp/patches/0012-02-ipq50xx-use-corrent-scm-function-to-write-tcsr.patch
+@@ -0,0 +1,41 @@
++From ba430b1a512dc1972807a1dd5a8d31a78ac572ff Mon Sep 17 00:00:00 2001
++From: hzy <hzyitc@outlook.com>
++Date: Mon, 22 Apr 2024 21:49:18 +0800
++Subject: [PATCH 2/2] ipq50xx: use corrent scm function to write tcsr
++
++Signed-off-by: hzy <hzyitc@outlook.com>
++---
++ hal/soc_ops/ipq50xx/nss_ipq50xx.c | 9 ++-------
++ 1 file changed, 2 insertions(+), 7 deletions(-)
++
++diff --git a/hal/soc_ops/ipq50xx/nss_ipq50xx.c b/hal/soc_ops/ipq50xx/nss_ipq50xx.c
++index 3e4491c0..e56de1cc 100644
++--- a/hal/soc_ops/ipq50xx/nss_ipq50xx.c
+++++ b/hal/soc_ops/ipq50xx/nss_ipq50xx.c
++@@ -18,7 +18,7 @@
++ 
++ #include <linux/of.h>
++ #include <linux/ioport.h>
++-#include <linux/qcom_scm.h>
+++#include <linux/firmware/qcom/qcom_scm.h>
++ #include "nss_dp_hal.h"
++ 
++ /*
++@@ -78,13 +78,8 @@ static void nss_dp_hal_tcsr_set(void)
++ 	 * If TZ is not enabled, we can write to the register directly.
++ 	 */
++ 	if (qcom_scm_is_available()) {
++-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
++-		err = qcom_scm_tcsr_reg_write((tcsr_base + TCSR_GMAC_AXI_CACHE_OVERRIDE_OFFSET),
+++		err = qcom_scm_io_writel((tcsr_base + TCSR_GMAC_AXI_CACHE_OVERRIDE_OFFSET),
++ 						TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE);
++-#else
++-		err = qti_scm_tcsr_reg_write((tcsr_base + TCSR_GMAC_AXI_CACHE_OVERRIDE_OFFSET),
++-						TCSR_GMAC_AXI_CACHE_OVERRIDE_VALUE);
++-#endif
++ 		if (err) {
++ 			pr_err("%s: SCM TCSR write error: %d\n", __func__, err);
++ 		}
++-- 
++2.40.1
++
+
+From 34a9ae5d4a7f13f81443895200afee4a638907db Mon Sep 17 00:00:00 2001
+From: hzy <hzyitc@outlook.com>
+Date: Wed, 24 Apr 2024 23:37:01 +0800
+Subject: [PATCH 3/6] qualcommax: add ipq50xx support
+
+Signed-off-by: hzy <hzyitc@outlook.com>
+---
+ target/linux/qualcommax/Makefile              |   2 +-
+ .../arch/arm64/boot/dts/qcom/ipq5018-ess.dtsi | 120 ++++++++++++++++++
+ target/linux/qualcommax/image/ipq50xx.mk      |   0
+ .../ipq50xx/base-files/etc/board.d/02_network |  25 ++++
+ .../etc/hotplug.d/firmware/11-ath11k-caldata  |  21 +++
+ .../linux/qualcommax/ipq50xx/config-default   |   2 +
+ target/linux/qualcommax/ipq50xx/target.mk     |   7 +
+ ...ware-qcom-scm-support-indicating-SDI.patch |  46 +++++++
+ ...are-qcom_scm-disable-SDI-if-required.patch |  90 +++++++++++++
+ ...com-scm-document-IPQ5018-compa.patch.patch |  31 +++++
+ ...pq5018-indicate-that-SDI-should-be-d.patch |  31 +++++
+ ...arm64-dts-qcom-ipq5018-add-mdio-node.patch |  44 +++++++
+ ...m64-dts-qcom-ipq5018-add-ge_phy-node.patch |  28 ++++
+ 13 files changed, 446 insertions(+), 1 deletion(-)
+ create mode 100644 target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-ess.dtsi
+ create mode 100644 target/linux/qualcommax/image/ipq50xx.mk
+ create mode 100644 target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
+ create mode 100644 target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+ create mode 100644 target/linux/qualcommax/ipq50xx/config-default
+ create mode 100644 target/linux/qualcommax/ipq50xx/target.mk
+ create mode 100644 target/linux/qualcommax/patches-6.6/0063-v6.7-dt-bindings-firmware-qcom-scm-support-indicating-SDI.patch
+ create mode 100644 target/linux/qualcommax/patches-6.6/0064-v6.7-firmware-qcom_scm-disable-SDI-if-required.patch
+ create mode 100644 target/linux/qualcommax/patches-6.6/0065-v6.7-dt-bindings-firmware-qcom-scm-document-IPQ5018-compa.patch.patch
+ create mode 100644 target/linux/qualcommax/patches-6.6/0066-v6.7-arm64-dts-qcom-ipq5018-indicate-that-SDI-should-be-d.patch
+ create mode 100644 target/linux/qualcommax/patches-6.6/0911-arm64-dts-qcom-ipq5018-add-mdio-node.patch
+ create mode 100644 target/linux/qualcommax/patches-6.6/0912-arm64-dts-qcom-ipq5018-add-ge_phy-node.patch
+
+diff --git a/target/linux/qualcommax/Makefile b/target/linux/qualcommax/Makefile
+index 3c9bb840e31ca..b3b6dc6118aa1 100644
+--- a/target/linux/qualcommax/Makefile
++++ b/target/linux/qualcommax/Makefile
+@@ -6,7 +6,7 @@ BOARDNAME:=Qualcomm Atheros 802.11ax WiSoC-s
+ FEATURES:=squashfs ramdisk fpu nand rtc emmc
+ KERNELNAME:=Image
+ CPU_TYPE:=cortex-a53
+-SUBTARGETS:=ipq807x ipq60xx
++SUBTARGETS:=ipq807x ipq60xx ipq50xx
+ 
+ KERNEL_PATCHVER:=6.6
+ 
+diff --git a/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-ess.dtsi b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-ess.dtsi
+new file mode 100644
+index 0000000000000..7e8fee32fcb43
+--- /dev/null
++++ b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5018-ess.dtsi
+@@ -0,0 +1,120 @@
++#include <dt-bindings/net/qcom-ipq-ess.h>
++
++&soc {
++	ess_instance: ess-instance {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		num_devices = <1>;
++
++		switch: ess-switch@39c00000 {
++			compatible = "qcom,ess-switch-ipq50xx";
++			device_id = <0>;
++			reg = <0x39c00000 0x200000>;
++			switch_access_mode = "local bus";
++			clocks = <&gcc GCC_CMN_BLK_AHB_CLK>,
++				 <&gcc GCC_CMN_BLK_SYS_CLK>,
++				 <&gcc GCC_UNIPHY_AHB_CLK>,
++				 <&gcc GCC_UNIPHY_SYS_CLK>,
++				 <&gcc GCC_MDIO0_AHB_CLK>,
++				 <&gcc GCC_MDIO1_AHB_CLK>,
++				 <&gcc GCC_GMAC0_CFG_CLK>,
++				 <&gcc GCC_GMAC0_SYS_CLK>,
++				 <&gcc GCC_GMAC1_CFG_CLK>,
++				 <&gcc GCC_GMAC1_SYS_CLK>,
++				 <&gcc GCC_GEPHY_RX_CLK>,
++				 <&gcc GCC_GEPHY_TX_CLK>,
++				 <&gcc GCC_UNIPHY_RX_CLK>,
++				 <&gcc GCC_UNIPHY_TX_CLK>,
++				 <&gcc GCC_GMAC0_RX_CLK>,
++				 <&gcc GCC_GMAC0_TX_CLK>,
++				 <&gcc GCC_GMAC1_RX_CLK>,
++				 <&gcc GCC_GMAC1_TX_CLK>,
++				 <&gcc GCC_SNOC_GMAC0_AHB_CLK>,
++				 <&gcc GCC_SNOC_GMAC1_AHB_CLK>,
++				 <&gcc GCC_GMAC0_PTP_CLK>,
++				 <&gcc GCC_GMAC1_PTP_CLK>;
++			clock-names = "cmn_ahb_clk",
++				      "cmn_sys_clk",
++				      "uniphy_ahb_clk",
++				      "uniphy_sys_clk",
++				      "gcc_mdio0_ahb_clk",
++				      "gcc_mdio1_ahb_clk",
++				      "gcc_gmac0_cfg_clk",
++				      "gcc_gmac0_sys_clk",
++				      "gcc_gmac1_cfg_clk",
++				      "gcc_gmac1_sys_clk",
++				      "uniphy0_port1_rx_clk",
++				      "uniphy0_port1_tx_clk",
++				      "uniphy1_port5_rx_clk",
++				      "uniphy1_port5_tx_clk",
++				      "nss_port1_rx_clk",
++				      "nss_port1_tx_clk",
++				      "nss_port2_rx_clk",
++				      "nss_port2_tx_clk",
++				      "gcc_snoc_gmac0_ahb_clk",
++				      "gcc_snoc_gmac1_ahb_clk",
++				      "gcc_gmac0_ptp_clk",
++				      "gcc_gmac1_ptp_clk";
++			resets = <&gcc GCC_GEPHY_BCR>,
++				 <&gcc GCC_UNIPHY_BCR>,
++				 <&gcc GCC_GMAC0_BCR>,
++				 <&gcc GCC_GMAC1_BCR>,
++				 <&gcc GCC_UNIPHY_SOFT_RESET>,
++				 <&gcc GCC_GEPHY_MISC_ARES>;
++			reset-names = "gephy_bcr_rst",
++				      "uniphy_bcr_rst",
++				      "gmac0_bcr_rst",
++				      "gmac1_bcr_rst",
++				      "uniphy1_soft_rst",
++				      "gephy_misc_rst";
++
++			status = "disabled";
++		};
++
++		ess-uniphy@98000 {
++			compatible = "qcom,ess-uniphy";
++			reg = <0x98000 0x800>;
++			uniphy_access_mode = "local bus";
++		};
++
++		nss-dp-common {
++			compatible = "qcom,nss-dp-common";
++			qcom,tcsr-base = <0x01937000>;
++		};
++	};
++
++	dp1: dp1 {
++		device_type = "network";
++		compatible = "qcom,nss-dp";
++		qcom,id = <1>;
++
++		reg = <0x39C00000 0x10000>;
++		interrupts = <GIC_SPI 101 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&gcc GCC_SNOC_GMAC0_AXI_CLK>;
++		clock-names = "nss-snoc-gmac-axi-clk";
++
++		qcom,mactype = <2>; /* GMAC_HAL_TYPE_SYN_GMAC */
++		local-mac-address = [000000000000];
++		phy-mode = "internal";
++		phy-handle = <&ge_phy>;
++
++		status = "disabled";
++	};
++
++	dp2: dp2 {
++		device_type = "network";
++		compatible = "qcom,nss-dp";
++		qcom,id = <2>;
++		
++
++		reg = <0x39D00000 0x10000>;
++		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&gcc GCC_SNOC_GMAC1_AXI_CLK>;
++		clock-names = "nss-snoc-gmac-axi-clk";
++
++		qcom,mactype = <2>; /* GMAC_HAL_TYPE_SYN_GMAC */
++		local-mac-address = [000000000000];
++		phy-mode = "sgmii";
++		status = "disabled";
++	};
++};
+diff --git a/target/linux/qualcommax/image/ipq50xx.mk b/target/linux/qualcommax/image/ipq50xx.mk
+new file mode 100644
+index 0000000000000..e69de29bb2d1d
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network b/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
+new file mode 100644
+index 0000000000000..16b01f8a98cda
+--- /dev/null
++++ b/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
+@@ -0,0 +1,25 @@
++#
++# Copyright (c) 2015 The Linux Foundation. All rights reserved.
++# Copyright (c) 2011-2015 OpenWrt.org
++#
++
++. /lib/functions/uci-defaults.sh
++. /lib/functions/system.sh
++
++ipq50xx_setup_interfaces()
++{
++	local board="$1"
++
++	case "$board" in
++	*)
++		echo "Unsupported hardware. Network interfaces not initialized"
++		;;
++	esac
++}
++
++board_config_update
++board=$(board_name)
++ipq50xx_setup_interfaces $board
++board_config_flush
++
++exit 0
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata b/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+new file mode 100644
+index 0000000000000..4f2c6218a351c
+--- /dev/null
++++ b/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+@@ -0,0 +1,21 @@
++#!/bin/sh
++
++[ -e /lib/firmware/$FIRMWARE ] && exit 0
++
++. /lib/functions/caldata.sh
++
++board=$(board_name)
++
++case "$FIRMWARE" in
++"ath11k/IPQ5018/hw1.0/caldata.bin")
++	case "$board" in
++	esac
++	;;
++"ath11k/qcn6122/hw1.0/caldata_1.bin")
++	case "$board" in
++	esac
++	;;
++*)
++	exit 1
++	;;
++esac
+diff --git a/target/linux/qualcommax/ipq50xx/config-default b/target/linux/qualcommax/ipq50xx/config-default
+new file mode 100644
+index 0000000000000..3f6027b0f2d5b
+--- /dev/null
++++ b/target/linux/qualcommax/ipq50xx/config-default
+@@ -0,0 +1,2 @@
++CONFIG_IPQ_GCC_5018=y
++CONFIG_PINCTRL_IPQ5018=y
+diff --git a/target/linux/qualcommax/ipq50xx/target.mk b/target/linux/qualcommax/ipq50xx/target.mk
+new file mode 100644
+index 0000000000000..bbb27056f4ed2
+--- /dev/null
++++ b/target/linux/qualcommax/ipq50xx/target.mk
+@@ -0,0 +1,7 @@
++SUBTARGET:=ipq50xx
++BOARDNAME:=Qualcomm Atheros IPQ50xx
++DEFAULT_PACKAGES += ath11k-firmware-ipq5018 ath11k-firmware-qcn6122
++
++define Target/Description
++	Build firmware images for Qualcomm Atheros IPQ50xx based boards.
++endef
+diff --git a/target/linux/qualcommax/patches-6.6/0063-v6.7-dt-bindings-firmware-qcom-scm-support-indicating-SDI.patch b/target/linux/qualcommax/patches-6.6/0063-v6.7-dt-bindings-firmware-qcom-scm-support-indicating-SDI.patch
+new file mode 100644
+index 0000000000000..2e88efd364ff6
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.6/0063-v6.7-dt-bindings-firmware-qcom-scm-support-indicating-SDI.patch
+@@ -0,0 +1,46 @@
++From 92dab9ea5f389c12828283146c60054642453a91 Mon Sep 17 00:00:00 2001
++From: Robert Marko <robimarko@gmail.com>
++Date: Wed, 16 Aug 2023 18:45:38 +0200
++Subject: [PATCH 1/4] dt-bindings: firmware: qcom,scm: support indicating SDI
++ default state
++
++IPQ5018 has SDI (Secure Debug Image) enabled by TZ by default, and that
++means that WDT being asserted or just trying to reboot will hang the board
++in the debug mode and only pulling the power and repowering will help.
++Some IPQ4019 boards like Google WiFI have it enabled as well.
++
++So, lets add a boolean property to indicate that SDI is enabled by default
++and thus needs to be disabled by the kernel.
++
++Signed-off-by: Robert Marko <robimarko@gmail.com>
++Acked-by: Mukesh Ojha <quic_mojha@quicinc.com>
++Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
++Reviewed-by: Brian Norris <computersforpeace@gmail.com>
++Link: https://lore.kernel.org/r/20230816164641.3371878-1-robimarko@gmail.com
++Signed-off-by: Bjorn Andersson <andersson@kernel.org>
++---
++ Documentation/devicetree/bindings/firmware/qcom,scm.yaml | 8 ++++++++
++ 1 file changed, 8 insertions(+)
++
++diff --git a/Documentation/devicetree/bindings/firmware/qcom,scm.yaml b/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
++index 0c073335..cb706145 100644
++--- a/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
+++++ b/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
++@@ -90,6 +90,14 @@ properties:
++       protocol to handle sleeping SCM calls.
++     maxItems: 1
++ 
+++  qcom,sdi-enabled:
+++    description:
+++      Indicates that the SDI (Secure Debug Image) has been enabled by TZ
+++      by default and it needs to be disabled.
+++      If not disabled WDT assertion or reboot will cause the board to hang
+++      in the debug mode.
+++    type: boolean
+++
++   qcom,dload-mode:
++     $ref: /schemas/types.yaml#/definitions/phandle-array
++     items:
++-- 
++2.40.1
++
+diff --git a/target/linux/qualcommax/patches-6.6/0064-v6.7-firmware-qcom_scm-disable-SDI-if-required.patch b/target/linux/qualcommax/patches-6.6/0064-v6.7-firmware-qcom_scm-disable-SDI-if-required.patch
+new file mode 100644
+index 0000000000000..69e46d7c4d175
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.6/0064-v6.7-firmware-qcom_scm-disable-SDI-if-required.patch
+@@ -0,0 +1,90 @@
++From ff4aa3bc98258a240b9bbab53fd8d2fb8184c485 Mon Sep 17 00:00:00 2001
++From: Robert Marko <robimarko@gmail.com>
++Date: Wed, 16 Aug 2023 18:45:39 +0200
++Subject: [PATCH 2/4] firmware: qcom_scm: disable SDI if required
++
++IPQ5018 has SDI (Secure Debug Image) enabled by TZ by default, and that
++means that WDT being asserted or just trying to reboot will hang the board
++in the debug mode and only pulling the power and repowering will help.
++Some IPQ4019 boards like Google WiFI have it enabled as well.
++
++Luckily, SDI can be disabled via an SCM call.
++
++So, lets use the boolean DT property to identify boards that have SDI
++enabled by default and use the SCM call to disable SDI during SCM probe.
++It is important to disable it as soon as possible as we might have a WDT
++assertion at any time which would then leave the board in debug mode,
++thus disabling it during SCM removal is not enough.
++
++Signed-off-by: Robert Marko <robimarko@gmail.com>
++Reviewed-by: Guru Das Srinagesh <quic_gurus@quicinc.com>
++Link: https://lore.kernel.org/r/20230816164641.3371878-2-robimarko@gmail.com
++Signed-off-by: Bjorn Andersson <andersson@kernel.org>
++---
++ drivers/firmware/qcom_scm.c | 30 ++++++++++++++++++++++++++++++
++ drivers/firmware/qcom_scm.h |  1 +
++ 2 files changed, 31 insertions(+)
++
++diff --git a/drivers/firmware/qcom_scm.c b/drivers/firmware/qcom_scm.c
++index ca52618e..c2c7fafe 100644
++--- a/drivers/firmware/qcom_scm.c
+++++ b/drivers/firmware/qcom_scm.c
++@@ -451,6 +451,29 @@ int qcom_scm_set_remote_state(u32 state, u32 id)
++ }
++ EXPORT_SYMBOL_GPL(qcom_scm_set_remote_state);
++ 
+++static int qcom_scm_disable_sdi(void)
+++{
+++	int ret;
+++	struct qcom_scm_desc desc = {
+++		.svc = QCOM_SCM_SVC_BOOT,
+++		.cmd = QCOM_SCM_BOOT_SDI_CONFIG,
+++		.args[0] = 1, /* Disable watchdog debug */
+++		.args[1] = 0, /* Disable SDI */
+++		.arginfo = QCOM_SCM_ARGS(2),
+++		.owner = ARM_SMCCC_OWNER_SIP,
+++	};
+++	struct qcom_scm_res res;
+++
+++	ret = qcom_scm_clk_enable();
+++	if (ret)
+++		return ret;
+++	ret = qcom_scm_call(__scm->dev, &desc, &res);
+++
+++	qcom_scm_clk_disable();
+++
+++	return ret ? : res.result[0];
+++}
+++
++ static int __qcom_scm_set_dload_mode(struct device *dev, bool enable)
++ {
++ 	struct qcom_scm_desc desc = {
++@@ -1850,6 +1873,13 @@ static int qcom_scm_probe(struct platform_device *pdev)
++ 	if (download_mode)
++ 		qcom_scm_set_download_mode(true);
++ 
+++
+++	/*
+++	 * Disable SDI if indicated by DT that it is enabled by default.
+++	 */
+++	if (of_property_read_bool(pdev->dev.of_node, "qcom,sdi-enabled"))
+++		qcom_scm_disable_sdi();
+++
++ 	/*
++ 	 * Initialize the QSEECOM interface.
++ 	 *
++diff --git a/drivers/firmware/qcom_scm.h b/drivers/firmware/qcom_scm.h
++index e6e512bd..7b68fa82 100644
++--- a/drivers/firmware/qcom_scm.h
+++++ b/drivers/firmware/qcom_scm.h
++@@ -80,6 +80,7 @@ extern int scm_legacy_call(struct device *dev, const struct qcom_scm_desc *desc,
++ #define QCOM_SCM_SVC_BOOT		0x01
++ #define QCOM_SCM_BOOT_SET_ADDR		0x01
++ #define QCOM_SCM_BOOT_TERMINATE_PC	0x02
+++#define QCOM_SCM_BOOT_SDI_CONFIG	0x09
++ #define QCOM_SCM_BOOT_SET_DLOAD_MODE	0x10
++ #define QCOM_SCM_BOOT_SET_ADDR_MC	0x11
++ #define QCOM_SCM_BOOT_SET_REMOTE_STATE	0x0a
++-- 
++2.40.1
++
+diff --git a/target/linux/qualcommax/patches-6.6/0065-v6.7-dt-bindings-firmware-qcom-scm-document-IPQ5018-compa.patch.patch b/target/linux/qualcommax/patches-6.6/0065-v6.7-dt-bindings-firmware-qcom-scm-document-IPQ5018-compa.patch.patch
+new file mode 100644
+index 0000000000000..6c02a735a657b
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.6/0065-v6.7-dt-bindings-firmware-qcom-scm-document-IPQ5018-compa.patch.patch
+@@ -0,0 +1,31 @@
++From f6aa7386bc40b552eea8ec1b1d2168afe3b31110 Mon Sep 17 00:00:00 2001
++From: Robert Marko <robimarko@gmail.com>
++Date: Wed, 16 Aug 2023 18:45:40 +0200
++Subject: [PATCH 3/4] dt-bindings: firmware: qcom,scm: document IPQ5018
++ compatible
++
++It seems that IPQ5018 compatible was never documented in the bindings.
++
++Signed-off-by: Robert Marko <robimarko@gmail.com>
++Reviewed-by: Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
++Link: https://lore.kernel.org/r/20230816164641.3371878-3-robimarko@gmail.com
++Signed-off-by: Bjorn Andersson <andersson@kernel.org>
++---
++ Documentation/devicetree/bindings/firmware/qcom,scm.yaml | 1 +
++ 1 file changed, 1 insertion(+)
++
++diff --git a/Documentation/devicetree/bindings/firmware/qcom,scm.yaml b/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
++index cb706145..0613a37a 100644
++--- a/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
+++++ b/Documentation/devicetree/bindings/firmware/qcom,scm.yaml
++@@ -24,6 +24,7 @@ properties:
++           - qcom,scm-apq8064
++           - qcom,scm-apq8084
++           - qcom,scm-ipq4019
+++          - qcom,scm-ipq5018
++           - qcom,scm-ipq5332
++           - qcom,scm-ipq6018
++           - qcom,scm-ipq806x
++-- 
++2.40.1
++
+diff --git a/target/linux/qualcommax/patches-6.6/0066-v6.7-arm64-dts-qcom-ipq5018-indicate-that-SDI-should-be-d.patch b/target/linux/qualcommax/patches-6.6/0066-v6.7-arm64-dts-qcom-ipq5018-indicate-that-SDI-should-be-d.patch
+new file mode 100644
+index 0000000000000..84947eccebbfc
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.6/0066-v6.7-arm64-dts-qcom-ipq5018-indicate-that-SDI-should-be-d.patch
+@@ -0,0 +1,31 @@
++From 79796e87215db9587d6c66ec6f6781e091bc6464 Mon Sep 17 00:00:00 2001
++From: Robert Marko <robimarko@gmail.com>
++Date: Wed, 16 Aug 2023 18:45:41 +0200
++Subject: [PATCH 4/4] arm64: dts: qcom: ipq5018: indicate that SDI should be
++ disabled
++
++Now that SCM has support for indicating that SDI has been enabled by
++default, lets set the property so SCM disables it during probing.
++
++Signed-off-by: Robert Marko <robimarko@gmail.com>
++Link: https://lore.kernel.org/r/20230816164641.3371878-4-robimarko@gmail.com
++Signed-off-by: Bjorn Andersson <andersson@kernel.org>
++---
++ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 1 +
++ 1 file changed, 1 insertion(+)
++
++diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++index 288758c9..38ffdc3c 100644
++--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++@@ -57,6 +57,7 @@ L2_0: l2-cache {
++ 	firmware {
++ 		scm {
++ 			compatible = "qcom,scm-ipq5018", "qcom,scm";
+++			qcom,sdi-enabled;
++ 		};
++ 	};
++ 
++-- 
++2.40.1
++
+diff --git a/target/linux/qualcommax/patches-6.6/0911-arm64-dts-qcom-ipq5018-add-mdio-node.patch b/target/linux/qualcommax/patches-6.6/0911-arm64-dts-qcom-ipq5018-add-mdio-node.patch
+new file mode 100644
+index 0000000000000..5611ebbdf8cb3
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.6/0911-arm64-dts-qcom-ipq5018-add-mdio-node.patch
+@@ -0,0 +1,44 @@
++From 26890ef30e083d149b9f8ba61f4f64721627d0de Mon Sep 17 00:00:00 2001
++From: hzy <hzyitc@outlook.com>
++Date: Mon, 22 Apr 2024 21:50:05 +0800
++Subject: [PATCH 1/2] arm64: dts: qcom: ipq5018: add mdio node
++
++Signed-off-by: hzy <hzyitc@outlook.com>
++---
++ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 20 ++++++++++++++++++++
++ 1 file changed, 20 insertions(+)
++
++diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++index bd0198aa..ff537e32 100644
++--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++@@ -94,6 +94,26 @@ soc: soc@0 {
++ 		#size-cells = <1>;
++ 		ranges = <0 0 0 0xffffffff>;
++ 
+++		mdio0: mdio@88000 {
+++			#address-cells = <1>;
+++			#size-cells = <0>;
+++			compatible = "qcom,ipq5018-mdio", "qcom,qca-mdio";
+++			reg = <0x88000 0x64>, <0x19475C4 0x4>;
+++			clocks = <&gcc GCC_MDIO0_AHB_CLK>;
+++			clock-names = "gcc_mdio_ahb_clk";
+++			status = "disabled";
+++		};
+++
+++		mdio1: mdio@90000 {
+++			#address-cells = <1>;
+++			#size-cells = <0>;
+++			compatible = "qcom,ipq5018-mdio";
+++			reg = <0x90000 0x64>;
+++			clocks = <&gcc GCC_MDIO1_AHB_CLK>;
+++			clock-names = "gcc_mdio_ahb_clk";
+++			status = "disabled";
+++		};
+++
++ 		tlmm: pinctrl@1000000 {
++ 			compatible = "qcom,ipq5018-tlmm";
++ 			reg = <0x01000000 0x300000>;
++-- 
++2.40.1
++
+diff --git a/target/linux/qualcommax/patches-6.6/0912-arm64-dts-qcom-ipq5018-add-ge_phy-node.patch b/target/linux/qualcommax/patches-6.6/0912-arm64-dts-qcom-ipq5018-add-ge_phy-node.patch
+new file mode 100644
+index 0000000000000..a4b3275facfae
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.6/0912-arm64-dts-qcom-ipq5018-add-ge_phy-node.patch
+@@ -0,0 +1,28 @@
++From 35c05ef3a6616e8fb2e97a590ce1221a10df404a Mon Sep 17 00:00:00 2001
++From: hzy <hzyitc@outlook.com>
++Date: Mon, 22 Apr 2024 21:50:34 +0800
++Subject: [PATCH 2/2] arm64: dts: qcom: ipq5018: add ge_phy node
++
++Signed-off-by: hzy <hzyitc@outlook.com>
++---
++ arch/arm64/boot/dts/qcom/ipq5018.dtsi | 4 ++++
++ 1 file changed, 4 insertions(+)
++
++diff --git a/arch/arm64/boot/dts/qcom/ipq5018.dtsi b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++index ff537e32..32bef8ab 100644
++--- a/arch/arm64/boot/dts/qcom/ipq5018.dtsi
+++++ b/arch/arm64/boot/dts/qcom/ipq5018.dtsi
++@@ -102,6 +102,10 @@ mdio0: mdio@88000 {
++ 			clocks = <&gcc GCC_MDIO0_AHB_CLK>;
++ 			clock-names = "gcc_mdio_ahb_clk";
++ 			status = "disabled";
+++
+++			ge_phy: ethernet-phy@7 {
+++				reg = <7>;
+++			};
++ 		};
++ 
++ 		mdio1: mdio@90000 {
++-- 
++2.40.1
++
+
+From 04b5666e4a4d94d9688bcd103b78dade6d5479e1 Mon Sep 17 00:00:00 2001
+From: hzy <hzyitc@outlook.com>
+Date: Wed, 24 Apr 2024 23:37:01 +0800
+Subject: [PATCH 4/6] qca-dp: support fixed-link
+
+Signed-off-by: hzy <hzyitc@outlook.com>
+---
+ .../0013-nss_dp_main-support-fixed-link.patch | 41 +++++++++++++++++++
+ 1 file changed, 41 insertions(+)
+ create mode 100644 package/kernel/qca-nss-dp/patches/0013-nss_dp_main-support-fixed-link.patch
+
+diff --git a/package/kernel/qca-nss-dp/patches/0013-nss_dp_main-support-fixed-link.patch b/package/kernel/qca-nss-dp/patches/0013-nss_dp_main-support-fixed-link.patch
+new file mode 100644
+index 0000000000000..559aa4c01f15f
+--- /dev/null
++++ b/package/kernel/qca-nss-dp/patches/0013-nss_dp_main-support-fixed-link.patch
+@@ -0,0 +1,41 @@
++From 309a1a330ccaa103a7648e944d97a0032116b338 Mon Sep 17 00:00:00 2001
++From: hzy <hzyitc@outlook.com>
++Date: Mon, 22 Apr 2024 21:50:39 +0800
++Subject: [PATCH] nss_dp_main: support fixed-link
++
++Signed-off-by: hzy <hzyitc@outlook.com>
++---
++ nss_dp_main.c | 15 ++++++++++++---
++ 1 file changed, 12 insertions(+), 3 deletions(-)
++
++diff --git a/nss_dp_main.c b/nss_dp_main.c
++index 9a09edd5..204063bf 100644
++--- a/nss_dp_main.c
+++++ b/nss_dp_main.c
++@@ -619,11 +619,20 @@ static int32_t nss_dp_of_get_pdata(struct device_node *np,
++ 	}
++ 
++ 	dp_priv->phy_node = of_parse_phandle(np, "phy-handle", 0);
++-	if (!dp_priv->phy_node) {
++-		pr_err("%s: error parsing phy-handle\n", np->name);
++-		return -EFAULT;
+++	if(!dp_priv->phy_node) {
+++		if(of_phy_is_fixed_link(np)) {
+++			int ret = of_phy_register_fixed_link(np);
+++			if(ret < 0) {
+++				pr_err("%s: fail to register fixed-link: %d\n", np->name, ret);
+++				return -EFAULT;
+++			}
+++		}
+++		dp_priv->phy_node = of_node_get(np);
++ 	}
++ 
+++	if(!dp_priv->phy_node)
+++		pr_err("%s: no phy-handle or fixed-link found\n", np->name);
+++
++ 	if (of_property_read_u32(np, "qcom,mactype", &hal_pdata->mactype)) {
++ 		pr_err("%s: error reading mactype\n", np->name);
++ 		return -EFAULT;
++-- 
++2.40.1
++
+
+From 8f895de84350737954be538965f9eb804b602c4b Mon Sep 17 00:00:00 2001
+From: hzy <hzyitc@outlook.com>
+Date: Wed, 24 Apr 2024 23:37:01 +0800
+Subject: [PATCH 5/6] qualcommax: ipq50xx: support qca8337
+
+Signed-off-by: hzy <hzyitc@outlook.com>
+---
+ .../linux/qualcommax/ipq50xx/config-default   |  5 +++
+ ...always-enable-SGMII-auto-negotiation.patch | 35 +++++++++++++++++++
+ 2 files changed, 40 insertions(+)
+ create mode 100644 target/linux/qualcommax/patches-6.6/0913-net-dsa-qca8k-always-enable-SGMII-auto-negotiation.patch
+
+diff --git a/target/linux/qualcommax/ipq50xx/config-default b/target/linux/qualcommax/ipq50xx/config-default
+index 3f6027b0f2d5b..06448b26efb15 100644
+--- a/target/linux/qualcommax/ipq50xx/config-default
++++ b/target/linux/qualcommax/ipq50xx/config-default
+@@ -1,2 +1,7 @@
+ CONFIG_IPQ_GCC_5018=y
+ CONFIG_PINCTRL_IPQ5018=y
++
++CONFIG_NET_DSA=y
++CONFIG_NET_DSA_QCA8K=y
++CONFIG_NET_DSA_TAG_QCA=y
++CONFIG_QCA83XX_PHY=y
+diff --git a/target/linux/qualcommax/patches-6.6/0913-net-dsa-qca8k-always-enable-SGMII-auto-negotiation.patch b/target/linux/qualcommax/patches-6.6/0913-net-dsa-qca8k-always-enable-SGMII-auto-negotiation.patch
+new file mode 100644
+index 0000000000000..d714ad100bd4a
+--- /dev/null
++++ b/target/linux/qualcommax/patches-6.6/0913-net-dsa-qca8k-always-enable-SGMII-auto-negotiation.patch
+@@ -0,0 +1,35 @@
++From 125af38177669263e17e230581b95e0c2857aae5 Mon Sep 17 00:00:00 2001
++From: hzy <hzyitc@outlook.com>
++Date: Mon, 22 Apr 2024 22:05:56 +0800
++Subject: [PATCH] net: dsa: qca8k: always enable SGMII auto-negotiation
++
++fixed-link can't work well without this
++
++Signed-off-by: hzy <hzyitc@outlook.com>
++---
++ drivers/net/dsa/qca/qca8k-8xxx.c | 9 ++++-----
++ 1 file changed, 4 insertions(+), 5 deletions(-)
++
++diff --git a/drivers/net/dsa/qca/qca8k-8xxx.c b/drivers/net/dsa/qca/qca8k-8xxx.c
++index 052fc673..c76c11a7 100644
++--- a/drivers/net/dsa/qca/qca8k-8xxx.c
+++++ b/drivers/net/dsa/qca/qca8k-8xxx.c
++@@ -1545,11 +1545,10 @@ static int qca8k_pcs_config(struct phylink_pcs *pcs, unsigned int neg_mode,
++ 		return -EINVAL;
++ 	}
++ 
++-	/* Enable/disable SerDes auto-negotiation as necessary */
++-	val = neg_mode == PHYLINK_PCS_NEG_INBAND_ENABLED ?
++-		0 : QCA8K_PWS_SERDES_AEN_DIS;
++-
++-	ret = qca8k_rmw(priv, QCA8K_REG_PWS, QCA8K_PWS_SERDES_AEN_DIS, val);
+++	/* Enable SerDes auto-negotiation always.
+++	 * So fixed-link can work.
+++	 */
+++	ret = qca8k_rmw(priv, QCA8K_REG_PWS, QCA8K_PWS_SERDES_AEN_DIS, 0);
++ 	if (ret)
++ 		return ret;
++ 
++-- 
++2.40.1
++
+
+From 3e348aec45a619ef7a5144aa5d4b6e343ba49150 Mon Sep 17 00:00:00 2001
+From: hzy <hzyitc@outlook.com>
+Date: Wed, 24 Apr 2024 23:37:01 +0800
+Subject: [PATCH 6/6] qualcommax: ipq50xx: support Redmi AX3000
+
+Signed-off-by: hzy <hzyitc@outlook.com>
+---
+ .../arm64/boot/dts/qcom/ipq5000-ax3000.dts    | 311 ++++++++++++++++++
+ target/linux/qualcommax/image/ipq50xx.mk      |  20 ++
+ .../ipq50xx/base-files/etc/board.d/02_network |   3 +
+ .../etc/hotplug.d/firmware/11-ath11k-caldata  |   6 +
+ 4 files changed, 340 insertions(+)
+ create mode 100644 target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5000-ax3000.dts
+
+diff --git a/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5000-ax3000.dts b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5000-ax3000.dts
+new file mode 100644
+index 0000000000000..254d3177e09c0
+--- /dev/null
++++ b/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq5000-ax3000.dts
+@@ -0,0 +1,311 @@
++// SPDX-License-Identifier: (GPL-2.0+)
++
++/dts-v1/;
++
++#include "ipq5018.dtsi"
++#include "ipq5018-ess.dtsi"
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++
++/ {
++	model = "Redmi AX3000";
++	compatible = "redmi,ax3000", "qcom,ipq5018";
++
++	aliases {
++		serial0 = &blsp1_uart1;
++
++		led-boot = &led_system_blue;
++		led-failsafe = &led_system_yellow;
++		led-running = &led_system_blue;
++		led-upgrade = &led_system_yellow;
++	};
++
++	chosen {
++		bootargs-append = " root=/dev/ubiblock0_1";
++		stdout-path = "serial0:115200n8";
++	};
++};
++
++&xo_board_clk {
++	clock-frequency = <24000000>;
++};
++
++&sleep_clk {
++	clock-frequency = <32000>;
++};
++
++&tlmm {
++	blsp_uart0_pins: blsp_uart0_pins {
++		pins =
++			"gpio28", /* RX */
++			"gpio29"; /* TX */
++		function = "blsp0_uart1";
++		drive-strength = <8>;
++		bias-disable;
++	};
++
++	mdio1_pins: mdio1_pins {
++		mdc {
++			pins = "gpio36";
++			function = "mdc";
++			drive-strength = <8>;
++			bias-pull-up;
++		};
++
++		mdio {
++			pins = "gpio37";
++			function = "mdio";
++			drive-strength = <8>;
++			bias-pull-up;
++		};
++	};
++
++	leds_pins: leds_pins {
++		led_system_blue {
++			pins = "gpio19";
++			function = "gpio";
++			drive-strength = <8>;
++			bias-pull-down;
++		};
++
++		led_system_yellow {
++			pins = "gpio17";
++			function = "gpio";
++			drive-strength = <8>;
++			bias-pull-down;
++		};
++
++		led_internet_blue {
++			pins = "gpio22";
++			function = "gpio";
++			drive-strength = <8>;
++			bias-pull-down;
++		};
++
++		led_internet_yellow {
++			pins = "gpio20";
++			function = "gpio";
++			drive-strength = <8>;
++			bias-pull-down;
++		};
++	};
++
++	button_pins: button_pins {
++		button_reset {
++			pins = "gpio25";
++			function = "gpio";
++			drive-strength = <8>;
++			bias-pull-up;
++		};
++
++		button_mesh {
++			pins = "gpio23";
++			function = "gpio";
++			drive-strength = <8>;
++			bias-pull-up;
++		};
++	};
++};
++
++&blsp1_uart1 {
++	pinctrl-0 = <&blsp_uart0_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++};
++
++&soc {
++	leds {
++		compatible = "gpio-leds";
++		pinctrl-0 = <&leds_pins>;
++		pinctrl-names = "default";
++
++		led_system_blue: led_system_blue {
++			label = "blue:system";
++			gpio = <&tlmm 19 GPIO_ACTIVE_HIGH>;
++		};
++
++		led_system_yellow: led_system_yellow {
++			label = "yellow:system";
++			gpio = <&tlmm 17 GPIO_ACTIVE_HIGH>;
++		};
++
++		led_internet_blue: led_internet_blue {
++			label = "blue:internet";
++			gpio = <&tlmm 22 GPIO_ACTIVE_HIGH>;
++		};
++
++		led_internet_yellow: led_internet_yellow {
++			label = "yellow:internet";
++			gpio = <&tlmm 20 GPIO_ACTIVE_HIGH>;
++		};
++	};
++
++	button {
++		compatible = "gpio-keys";
++		pinctrl-0 = <&button_pins>;
++		pinctrl-names = "default";
++
++		button_reset {
++			label = "reset";
++			gpios = <&tlmm 25 GPIO_ACTIVE_LOW>;
++			linux,input-type = <EV_KEY>;
++			linux,code = <KEY_RESTART>;
++			debounce-interval = <60>;
++		};
++
++		button_mesh {
++			label = "mesh";
++			gpios = <&tlmm 23 GPIO_ACTIVE_LOW>;
++			linux,input-type = <EV_KEY>;
++			linux,code = <BTN_9>;
++			debounce-interval = <60>;
++		};
++	};
++};
++
++&switch {
++	status = "okay";
++
++	switch_mac_mode = <MAC_MODE_SGMII_CHANNEL0>;
++
++	qcom,port_phyinfo {
++		port@0 {
++			port_id = <1>;
++			mdiobus = <&mdio0>;
++			phy_address = <7>;
++			phy_dac = <0x10 0x10>;
++
++			status = "disabled";
++		};
++
++		port@1 {
++			port_id = <2>;
++			forced-speed = <1000>;
++			forced-duplex = <1>;
++		};
++	};
++
++};
++
++&dp1 {
++	/*
++	 * ===============================================================
++	 *     _______________________         _______________________ 
++	 *    |        IPQ5018        |       |        QCA8337        |
++	 *    | +------+   +--------+ |       | +--------+   +------+ |
++	 *    | | MAC0 |---| GE Phy |-+--UTP--+-|  Phy4  |---| MAC5 | |
++	 *    | +------+   +--------+ |       | +--------+   +------+ |
++	 *    | +------+   +--------+ |       | +--------+   +------+ |
++	 *    | | MAC1 |---| Uniphy |-+-SGMII-+-| SerDes |---| MAC0 | |
++	 *    | +------+   +--------+ |       | +--------+   +------+ |
++	 *    |_______________________|       |_______________________|
++	 *
++	 * ===============================================================
++	 *
++	 * Current drivers don't support such topology. So dp1 and ge_phy
++	 * are useless. But they can't be disabled dut to qca-ssdk use
++	 * ge_phy to detect IPQ5018 dummy switch.
++	 */
++	status = "okay";
++};
++
++&dp2 {
++	status = "okay";
++	phy-mode = "sgmii";
++
++	fixed-link {
++		speed = <1000>;
++		full-duplex;
++	};
++};
++
++&mdio0 {
++	status = "okay";
++};
++
++&ge_phy {
++	status = "okay";
++};
++
++&mdio1 {
++	pinctrl-0 = <&mdio1_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++
++	reset-gpios = <&tlmm 26 GPIO_ACTIVE_LOW>;
++
++	qca8337_0: ethernet-phy@0 {
++		reg = <0>;
++	};
++
++	qca8337_1: ethernet-phy@1 {
++		reg = <1>;
++	};
++
++	qca8337_2: ethernet-phy@2 {
++		reg = <2>;
++	};
++
++	qca8337_3: ethernet-phy@3 {
++		reg = <3>;
++	};
++
++	qca8337_4: ethernet-phy@4 {
++		reg = <4>;
++		status = "disabled";
++	};
++
++	switch0: ethernet-switch@17 {
++		compatible = "qca,qca8337";
++		reg = <17>;
++
++		ports {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			switch0cpu: port@0 {
++				reg = <0>;
++				label = "cpu";
++				phy-mode = "sgmii";
++				ethernet = <&dp2>;
++				qca,sgmii-enable-pll;
++
++				fixed-link {
++					speed = <1000>;
++					full-duplex;
++				};
++			};
++
++			port@1 {
++				reg = <1>;
++				label = "lan1";
++				phy-handle = <&qca8337_0>;
++			};
++
++			port@2 {
++				reg = <2>;
++				label = "lan2";
++				phy-handle = <&qca8337_1>;
++			};
++
++			port@3 {
++				reg = <3>;
++				label = "lan3";
++				phy-handle = <&qca8337_2>;
++			};
++
++			port@4 {
++				reg = <4>;
++				label = "wan";
++				phy-handle = <&qca8337_3>;
++			};
++
++			port@5 {
++				reg = <5>;
++				label = "cpu2";
++				phy-handle = <&qca8337_4>;
++				status = "disabled";
++			};
++		};
++	};
++};
+diff --git a/target/linux/qualcommax/image/ipq50xx.mk b/target/linux/qualcommax/image/ipq50xx.mk
+index e69de29bb2d1d..69bca0bd24b19 100644
+--- a/target/linux/qualcommax/image/ipq50xx.mk
++++ b/target/linux/qualcommax/image/ipq50xx.mk
+@@ -0,0 +1,20 @@
++define Device/redmi_ax3000
++  $(call Device/FitImage)
++  $(call Device/UbiFit)
++  SOC := ipq5000
++  DEVICE_VENDOR := Redmi
++  DEVICE_MODEL := AX3000
++  DEVICE_ALT0_VENDOR := Xiaomi
++  DEVICE_ALT0_MODEL := CR880X
++  DEVICE_ALT0_VARIANT := (M81 version)
++  DEVICE_ALT1_VENDOR := Xiaomi
++  DEVICE_ALT1_MODEL := CR880X
++  DEVICE_ALT1_VARIANT := (M79 version)
++  BLOCKSIZE := 128k
++  PAGESIZE := 2048
++  DEVICE_DTS_CONFIG := config@mp02.1
++  DEVICE_PACKAGES := ipq-wifi-redmi_ax3000
++endef
++TARGET_DEVICES += redmi_ax3000
++
++$(eval $(call BuildImage))
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network b/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
+index 16b01f8a98cda..dd156fcbd0632 100644
+--- a/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
++++ b/target/linux/qualcommax/ipq50xx/base-files/etc/board.d/02_network
+@@ -11,6 +11,9 @@ ipq50xx_setup_interfaces()
+ 	local board="$1"
+ 
+ 	case "$board" in
++	redmi,ax3000)
++		ucidef_set_interfaces_lan_wan "lan1 lan2 lan3" "wan"
++		;;
+ 	*)
+ 		echo "Unsupported hardware. Network interfaces not initialized"
+ 		;;
+diff --git a/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata b/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+index 4f2c6218a351c..cc1f94468a930 100644
+--- a/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
++++ b/target/linux/qualcommax/ipq50xx/base-files/etc/hotplug.d/firmware/11-ath11k-caldata
+@@ -9,10 +9,16 @@ board=$(board_name)
+ case "$FIRMWARE" in
+ "ath11k/IPQ5018/hw1.0/caldata.bin")
+ 	case "$board" in
++	redmi,ax3000)
++		caldata_extract "0:ART" 0x1000 0x20000
++		;;
+ 	esac
+ 	;;
+ "ath11k/qcn6122/hw1.0/caldata_1.bin")
+ 	case "$board" in
++	redmi,ax3000)
++		caldata_extract "0:ART" 0x26800 0x20000
++		;;
+ 	esac
+ 	;;
+ *)
